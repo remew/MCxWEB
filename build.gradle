@@ -1,0 +1,13 @@
+import com.sun.org.apache.xalan.internal.xsltc.cmdline.Compile
+
+tasks.withType(Compile) {
+    options.encoding = 'UTF-8'
+}
+
+sourceSets.main {
+    java.srcDirs project.projectDir.name
+    resources.srcDirs project.projectDir.name
+}
+
+version = "0.0.1"
+

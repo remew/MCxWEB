@@ -1,0 +1,16 @@
+[
+{
+  "modid": "mcxweb",
+  "name": "MCxWEB",
+  "description": "Connect Minecraft Server and Web Technology.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "https://github.com/remew/MCxWEB",
+  "updateUrl": "",
+  "authorList": ["Remew"],
+  "credits": "",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
