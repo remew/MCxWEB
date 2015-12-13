@@ -1,5 +1,6 @@
 package net.remew.mods.mcxweb;
 
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.*;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
@@ -7,8 +8,8 @@ import cpw.mods.fml.common.network.NetworkCheckHandler;
 import cpw.mods.fml.relauncher.Side;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.exceptions.JedisException;
+import net.remew.mods.mcxweb.events.LogInOutEvent;
+import net.remew.mods.mcxweb.events.ChatEvent;
 
 import java.util.Map;
 
@@ -23,8 +24,7 @@ public class MCxWEB
     public static String REDIS_HOST;
     public static String REDIS_PASS;
     public static boolean REDIS_FORCE;
-
-    private Jedis jedis;
+    public static int MAX_SAVE_CHAT;
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event)
@@ -36,64 +36,34 @@ public class MCxWEB
         REDIS_PASS = cfg.getString("RedisHostPassword", "Redis", "", "Redis's host address.");
         REDIS_TIMEOUT = cfg.getInt("RedisConnectionTimeout", "Redis", 2000, 1, 10000, "Redis's connection timeout miliseccond");
         REDIS_FORCE = cfg.getBoolean("ForceUsingRedis", "Redis", false, "If true and can't connect to redis, shutdown server");
+        MAX_SAVE_CHAT = cfg.getInt("MaxSaveChat", "Settings", 100, 0, 65535, "Max store chat number.");
         cfg.save();
     }
 
     @EventHandler
     public void init(FMLInitializationEvent event)
     {
-        try
-        {
-            this.jedis = new Jedis(REDIS_HOST, REDIS_PORT, REDIS_TIMEOUT);
-            if (!REDIS_PASS.equals(""))
-            {
-                this.jedis.auth(REDIS_PASS);
-            }
-            this.jedis.connect();
-        }
-        catch(JedisException e)
-        {
-            this.jedis = null;
-            System.out.println("Warning!!! Can't connect to jedis!!!");
-            if (REDIS_FORCE)
-            {
-                System.out.println("Server will shutdown because force mode!!!");
-                throw e;
-            }
-            else
-            {
-                System.out.println("Server will not shutdown because not force mode!!!");
-            }
-        }
-        MinecraftForge.EVENT_BUS.register(new ModEvent());
+        JedisWrapper.setRedisHost(REDIS_HOST);
+        JedisWrapper.setRedisPort(REDIS_PORT);
+        JedisWrapper.setRedisTimeout(REDIS_TIMEOUT);
+        JedisWrapper.setRedisPass(REDIS_PASS);
+        MinecraftForge.EVENT_BUS.register(new ChatEvent());
+        FMLCommonHandler.instance().bus().register(new LogInOutEvent());
     }
 
     @EventHandler
     public void serverStarted(FMLServerStartedEvent event)
     {
-        this.updateState("Started");
         System.out.println("Server Started");
+        JedisWrapper.connect();
+        JedisWrapper.updateServerState("Started");
     }
 
     @EventHandler
     public void serverStopped(FMLServerStoppedEvent event) {
-        this.updateState("Stopped");
-        this.jedis.close();
         System.out.println("Server Stopped");
-    }
-
-    private void updateState(String state)
-    {
-        String KEY = "state";
-        if (this.jedis != null && this.jedis.isConnected())
-        {
-            this.jedis.set(KEY, state);
-            this.jedis.publish("MCxWEB", this.generateKeyValueMap(KEY, state));
-        }
-    }
-    private String generateKeyValueMap(String key, String value)
-    {
-        return String.format("{\"type\":\"%s\", \"%s\":\"%s\"}", key, key, value);
+        JedisWrapper.updateServerState("Stopped");
+        JedisWrapper.disconnect();
     }
 
     // Server only mod
@@ -101,5 +71,5 @@ public class MCxWEB
     public boolean netWorkHandler(Map<String, String> mods, Side side)
     {
         return side.isClient();
-    }
+    }//*/
 }
